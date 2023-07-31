@@ -70,8 +70,8 @@ class SACAgent(BaseAgent):
         loss = OrderedDict()
         loss['Critic_Loss'] = TODO
         loss['Actor_Loss'] = TODO
-        loss['Alpha_Loss'] = TODO
-        loss['Temperature'] = TODO
+        loss['Alpha_Loss'] = TODO  # this is your entropy loss, realistically speaking
+        loss['Temperature'] = TODO  # this is the value of alpha 
 
         return loss
 

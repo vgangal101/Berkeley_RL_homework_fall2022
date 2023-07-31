@@ -56,6 +56,17 @@ class SACCritic(nn.Module, BaseCritic):
 
     def forward(self, obs: torch.Tensor, action: torch.Tensor):
         # TODO: return the two q values
+        
+        # Implem detail:
+         # values is a dict , containing keys q1_value, and q2_value. 
+        values = {}
+
+        q1_value = self.Q1(obs).gather(1,action)
+        q2_value = self.Q2(obs).gather(1,action)
+
+        values['q1_value'] = q1_value
+        values['q2_value'] = q2_value
+
         return values
 
 

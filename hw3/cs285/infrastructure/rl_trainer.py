@@ -254,7 +254,7 @@ class RL_Trainer(object):
                     episode_step = 0
                     episode_return = 0
 
-                action = self.agent.actor.get_action(obs)[0]
+                action = self.agent.actor.get_action(obs)[0] # TODO : needs to be implemented 
                 next_obs, rew, done, _ = self.env.step(action)
 
                 episode_return += rew
@@ -275,7 +275,7 @@ class RL_Trainer(object):
             # train agent (using sampled data from replay buffer)
             if itr % print_period == 0:
                 print("\nTraining agent...")
-            all_logs = self.train_agent()
+            all_logs = self.train_agent() # TODO : step needs to be implemented
 
             # log/save
             if self.logvideo or self.logmetrics:
@@ -306,7 +306,16 @@ class RL_Trainer(object):
         return paths, envsteps_this_batch, train_video_paths
 
     def train_agent(self):
-        # TODO: get this from hw1 or hw2
+        # TODO: get this from hw1 or hw2 - NO !
+        # Needs to be completed as per needs of SAC 
+
+        # sample from the replay buffer 
+        ob_no, ac_na, re_n, next_ob_no, terminal_n = self.agent.sample()
+
+        # call agent train function and pass replay buffer sample data to it 
+        self.agent.train(ob_no,ac_na,re_n,next_ob_no,terminal_n)
+
+
 
     ####################################
     ####################################
