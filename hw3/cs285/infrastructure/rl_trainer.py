@@ -313,7 +313,9 @@ class RL_Trainer(object):
         ob_no, ac_na, re_n, next_ob_no, terminal_n = self.agent.sample()
 
         # call agent train function and pass replay buffer sample data to it 
-        self.agent.train(ob_no,ac_na,re_n,next_ob_no,terminal_n)
+        losses_dict = self.agent.train(ob_no,ac_na,re_n,next_ob_no,terminal_n)
+
+        return losses_dict
 
 
 

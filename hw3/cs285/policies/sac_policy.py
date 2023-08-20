@@ -14,7 +14,7 @@ class MLPPolicySAC(MLPPolicy):
                  n_layers,
                  size,
                  discrete=False,
-                 learning_rate=3e-4,
+                 learning_rate=3e-4,   
                  training=True,
                  log_std_bounds=[-20,2],
                  action_range=[-1,1],
@@ -36,11 +36,11 @@ class MLPPolicySAC(MLPPolicy):
     @property
     def alpha(self):
         # TODO: Formulate entropy term
+
+        # QUESTION: What is the formula for this ??? at = exp(Bt) 
+        alpha = torch.exp(self.log_alpha) 
         
-        # original instructions ( above) say to formulate the entropy term , but that does not make sense 
         
-        alpha = torch.exp(self.log_alpha)
-        #return entropy
         return alpha
 
 
@@ -90,29 +90,33 @@ class MLPPolicySAC(MLPPolicy):
         # make 
 
 
-        #return actor_loss, alpha_loss, self.alpha
-        # adjusting the return statement here 
         
-        # logic
+        action = self.get_action(obs,sample=False) # sample the policy deterministically f(E|St)
+        dist = self.forward(torch.from_numpy(obs).to(ptu.device))
+
+        log_prob_action = dist.log_prob(action) # log(pi(st|at))
         
 
-        # for this part do we need to redo the computation where we sample from a spherical gaussian ? do we need to reproduce the contents of forward ?? 
-        
-        input_tensor = torch.from_numpy(obs).to(ptu.device)
-
-        dist = self.forward(input_tensor)
-        action = dist.mean
-
-        q_values = critic.forward(input_tensor,action)
+        q_values = critic.forward(torch.from_numpy(obs).to(ptu.device),action)
         q_values_min = torch.min(q_values['q1_value'],q_values['q2_value'])
-        
-
-
-
-
 
         
+        # -1 is for gradient ascent 
+        actor_loss = -1 * self.alpha * log_prob_action + (self.alpha * log_prob_action - q_values_min)
+
+        alpha_loss = (-1 * self.alpha * log_prob_action - self.alpha * self.target_entropy).mean()
+
+        # update the actor
+        actor_loss.backward()
+        self.optimizer.step()
+
+        # udpate the alpha term
+        alpha_loss.backward()
+        self.log_alpha_optimizer.step()
+
+        return actor_loss, alpha_loss, self.alpha
+            
 
 
-        return actor_loss, entropy_loss, self.alpha
+        
 
