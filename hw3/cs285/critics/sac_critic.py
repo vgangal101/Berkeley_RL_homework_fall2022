@@ -61,17 +61,21 @@ class SACCritic(nn.Module, BaseCritic):
          # values is a dict , containing keys q1_value, and q2_value. 
         values = {}
 
-        input_tensor = torch.cat((obs.T,action.T)).T
+        #input_tensor = torch.cat((obs.T,action.T)).T
+        action = action.squeeze(-1)
+
+        input_tensor = torch.cat((obs,action))
+
 
         #q1_value = self.Q1(obs).gather(1,action)
         q1_value = self.Q1(input_tensor)
         q2_value = self.Q2(input_tensor)
 
-        values['q1_value'] = q1_value
-        values['q2_value'] = q2_value
+        # values['q1_value'] = q1_value
+        # values['q2_value'] = q2_value
 
-        return values
-
+        # return values
+        return q1_value, q2_value
 
 
         
