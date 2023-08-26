@@ -306,11 +306,11 @@ class RL_Trainer(object):
         return paths, envsteps_this_batch, train_video_paths
 
     def train_agent(self):
-        # TODO: get this from hw1 or hw2 - NO !
+        # TODO: get this from hw1 or hw2 
         # Needs to be completed as per needs of SAC 
 
         # sample from the replay buffer 
-        ob_no, ac_na, re_n, next_ob_no, terminal_n = self.agent.sample()
+        ob_no, ac_na, re_n, next_ob_no, terminal_n = self.agent.sample(self.params['train_batch_size'])
 
         # call agent train function and pass replay buffer sample data to it 
         losses_dict = self.agent.train(ob_no,ac_na,re_n,next_ob_no,terminal_n)

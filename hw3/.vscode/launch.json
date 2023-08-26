@@ -21,7 +21,7 @@
                 "-b", "1000",
                 "-eb", "2000",
                 "-lr", "0.0003",
-                "--init-temperature", "0.1",
+                "--init_temperature", "0.1",
                 "--exp_name", "q6a_sac_InvertedPendulum_debug_start",
                 "--seed", "1"
             ],

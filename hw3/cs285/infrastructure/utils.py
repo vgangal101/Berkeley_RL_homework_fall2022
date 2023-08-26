@@ -1,7 +1,8 @@
 import numpy as np
 import time
 import copy
-
+import torch
+import cs285.infrastructure.pytorch_util as ptu
 ############################################
 ############################################
 
@@ -56,6 +57,7 @@ def mean_squared_error(a, b):
 
 def sample_trajectory(env, policy, max_path_length, render=False, render_mode=('rgb_array')):
     # TODO: get this from hw1 or hw2
+    pass
 
 def sample_trajectories(env, policy, min_timesteps_per_batch, max_path_length, render=False, render_mode=('rgb_array')):
     """

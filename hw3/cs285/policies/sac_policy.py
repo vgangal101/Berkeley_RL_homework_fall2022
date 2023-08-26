@@ -7,6 +7,8 @@ from torch import nn
 from torch import optim
 import itertools
 
+torch.autograd.set_detect_anomaly(mode=True)
+
 class MLPPolicySAC(MLPPolicy):
     def __init__(self,
                  ac_dim,
@@ -51,14 +53,19 @@ class MLPPolicySAC(MLPPolicy):
         # additional notes : action should be tensor (action_dim,1) on return 
         # CAREFUL : there can be an error in the action shape, outer loops needs to index into it [0] 
 
-        dist = self.forward(torch.from_numpy(obs.to(ptu.device)))
+        # detail to make sure obs always remains a float
+        
+
+        dist = self.forward(torch.from_numpy(obs).float().to(ptu.device))
 
         if sample: 
             action = dist.sample()
         else:
             # choose deterministically i.e. return mean of the distribution
             action = dist.mean
-        return action.numpy()
+        return ptu.to_numpy(action.unsqueeze(-1))
+        #return action.numpy()
+
 
     # This function defines the forward pass of the network.
     # You can return anything you want, but you should be able to differentiate
@@ -75,7 +82,7 @@ class MLPPolicySAC(MLPPolicy):
         # Implementation notes: 
         # send back the action distribution i.e. a torch.distributions.Distribution object 
 
-        std = torch.exp(torch.clip(self.agent.log_std,min=min(self.log_std_bounds), max=max(self.log_std_bounds)))
+        std = torch.exp(torch.clip(self.logstd,min=min(self.log_std_bounds), max=max(self.log_std_bounds)))
         mean = self.mean_net(observation)
         action_distribution = sac_utils.SquashedNormal(mean,std)
 
@@ -92,6 +99,7 @@ class MLPPolicySAC(MLPPolicy):
 
         
         action = self.get_action(obs,sample=False) # sample the policy deterministically f(E|St)
+        action = torch.tensor(action).to(ptu.device)
         dist = self.forward(torch.from_numpy(obs).to(ptu.device))
 
         log_prob_action = dist.log_prob(action) # log(pi(st|at))
@@ -102,15 +110,17 @@ class MLPPolicySAC(MLPPolicy):
 
         
         # -1 is for gradient ascent 
-        actor_loss = -1 * self.alpha * log_prob_action + (self.alpha * log_prob_action - q_values_min)
+        actor_loss =  -1 * (self.alpha * log_prob_action + (self.alpha * log_prob_action - q_values_min)).mean()
 
-        alpha_loss = (-1 * self.alpha * log_prob_action - self.alpha * self.target_entropy).mean()
+        alpha_loss = (-1 * self.alpha * log_prob_action.detach() - self.alpha * self.target_entropy).mean()
 
         # update the actor
+        self.optimizer.zero_grad()
         actor_loss.backward()
         self.optimizer.step()
 
         # udpate the alpha term
+        self.log_alpha_optimizer.zero_grad()
         alpha_loss.backward()
         self.log_alpha_optimizer.step()
 
