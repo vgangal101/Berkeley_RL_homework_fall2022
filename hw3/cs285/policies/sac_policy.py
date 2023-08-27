@@ -94,33 +94,29 @@ class MLPPolicySAC(MLPPolicy):
         # TODO Update actor network and entropy regularizer
         # return losses and alpha value
 
-        # Implem notes: 
-        # critic will give you the 2 Q-values involved 
-        # make 
 
+        sampled_action = self.get_action(obs,sample=False) # sample the policy deterministically f(E|St)
+        sampled_action_tensor = ptu.from_numpy(sampled_action)
+        obs_tensor = ptu.from_numpy(obs)
+        dist = self.forward(obs_tensor)
 
-        
-        action = self.get_action(obs,sample=False) # sample the policy deterministically f(E|St)
-        action = torch.tensor(action).to(ptu.device)
-        dist = self.forward(torch.from_numpy(obs).to(ptu.device))
-
-        log_prob_action = dist.log_prob(action) # log(pi(st|at))
+        log_prob_action = dist.log_prob(sampled_action_tensor) # log(pi(st|at))
         
 
-        q1_value, q2_value  = critic.forward(torch.from_numpy(obs).to(ptu.device),action)
+        q1_value, q2_value  = critic.forward(torch.from_numpy(obs).to(ptu.device),sampled_action_tensor)
         q_values_min = torch.min(q1_value,q2_value)
 
         
-        # -1 is for gradient ascent 
+        # -1 is for gradient ascent -- NO !! 
         #below is likely incorrect 
         # actor_loss =  -1 * (self.alpha * log_prob_action + (self.alpha * log_prob_action - q_values_min)).mean()
-        #actor_loss = -1 * (self.alpha.detach() * log_prob_action - q_values_min.detach()).mean()
-        actor_loss = -1 * (q_values_min.detach() - self.alpha.detach() * log_prob_action).mean()
+        actor_loss = (self.alpha.detach() * log_prob_action - q_values_min.detach()).mean()
+        #actor_loss = -1 * (q_values_min.detach() - self.alpha.detach() * log_prob_action).mean()
 
 
-        alpha_loss = (-1 * self.alpha * log_prob_action.detach() - self.alpha * self.target_entropy).mean()
+        #alpha_loss = (-1 * self.alpha * log_prob_action.detach() - self.alpha * self.target_entropy).mean()
 
-        #alpha_loss = (-1 * self.alpha * (log_prob_action.detach() + self.target_entropy)).mean()
+        alpha_loss = (-1 * self.alpha * (log_prob_action.detach() + self.target_entropy)).mean()
 
 
         # update the actor
@@ -129,6 +125,7 @@ class MLPPolicySAC(MLPPolicy):
         self.optimizer.step()
 
         # udpate the alpha term
+
         self.log_alpha_optimizer.zero_grad()
         alpha_loss.backward()
         self.log_alpha_optimizer.step()
