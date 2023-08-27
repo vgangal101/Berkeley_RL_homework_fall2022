@@ -56,31 +56,41 @@ class SACAgent(BaseAgent):
         obs_tensor = ptu.from_numpy(ob_no)
         action_tensor = torch.from_numpy(ac_na).float().to(ptu.device)
         
+
+
         next_action_sampled = self.actor.get_action(ob_no)
         next_action_sampled_tensor = ptu.from_numpy(next_action_sampled)
         next_obs_tensor = ptu.from_numpy(next_ob_no)
 
 
-        q_vals = self.critic_target(next_obs_tensor,next_action_sampled_tensor)
-        min_target_q_val = torch.min(q_vals)
+        target_q1_vals, target_q2_vals = self.critic_target(next_obs_tensor,next_action_sampled_tensor)
+        min_target_q_val = torch.min(target_q1_vals,target_q2_vals)
 
 
         # implementation todo - compute the learning target for the critic 
         rewards_tensor = ptu.from_numpy(re_n)
-        terminals_tensor = ptu.from_numpy(terminal_n)
+        terminals_tensor = ptu.from_numpy(terminal_n)       
 
         # compute the log_probs for all actions 
-        batch_size = next_obs_tensor.shape[0]
+        #batch_size = next_obs_tensor.shape[0]
 
-        all_log_prob_action = []
-        for i in range(batch_size):
-            dist = self.actor.forward(next_obs_tensor[i])
-            action_log_prob = dist.log_prob(next_action_sampled_tensor[i])
-            all_log_prob_action.append(action_log_prob)
+        # all_log_prob_action = []
+        # for i in range(batch_size):
+        #     dist = self.actor.forward(next_obs_tensor[i])
+        #     action_log_prob = dist.log_prob(next_action_sampled_tensor[i])
+        #     all_log_prob_action.append(action_log_prob)
         
-        log_probs = torch.stack(all_log_prob_action)
+        # log_probs = torch.stack(all_log_prob_action)
 
-        learning_target = rewards_tensor + self.gamma * (1 - terminals_tensor) * (min_target_q_val - self.actor.alpha * log_probs)
+        dist = self.actor.forward(next_obs_tensor)
+        log_probs = dist.log_prob(next_action_sampled_tensor)
+
+        terminals_tensor = terminals_tensor.unsqueeze(-1)
+        rewards_tensor = rewards_tensor.unsqueeze(-1)
+
+
+        learning_target = rewards_tensor + self.gamma * (1 - terminals_tensor) * (min_target_q_val.detach() - self.actor.alpha.detach() * log_probs.detach())
+
 
         # 2. Get current Q estimates and calculate critic loss
        
@@ -103,16 +113,14 @@ class SACAgent(BaseAgent):
         # for agent_params['num_critic_updates_per_agent_update'] steps,
         #     update the critic
 
-        all_critic_loss = []
+        critic_loss = None
 
         for _ in range(self.agent_params['num_critic_updates_per_agent_update']):
             #def update_critic(self, ob_no, ac_na, next_ob_no, re_n, terminal_n):
             loss_critic = self.update_critic(ob_no, ac_na, next_ob_no, re_n, terminal_n)
-            all_critic_loss.append(loss_critic)
-
-        #critic_loss = torch.cat(all_critic_loss)
-        critic_loss = torch.tensor(all_critic_loss)
-
+            
+        critic_loss = loss_critic.item()
+        
         # 2. Softly update the target every critic_target_update_frequency (HINT: look at sac_utils)
         if self.training_step % self.critic_target_update_frequency == 0:
             soft_update_params(self.critic,self.critic_target,self.critic_tau)
@@ -123,28 +131,27 @@ class SACAgent(BaseAgent):
         # for agent_params['num_actor_updates_per_agent_update'] steps,
         #     update the actor
 
-        all_actor_loss = []
-        all_alpha_loss = []
-        temperature_values = []
-        for _ in range(self.agent_params['num_actor_updates_per_agent_update']):
-            loss_actor, loss_alpha, alpha  = self.actor.update(ob_no,self.critic)
-            all_actor_loss.append(loss_actor)
-            all_alpha_loss.append(loss_alpha)
-            temperature_values.append(alpha)
+        actor_loss = None 
+        alpha_loss = None 
+        alpha = None 
         
-        actor_loss = torch.tensor(all_actor_loss)
-        alpha_loss = torch.tensor(all_alpha_loss)
-        temperature_values = torch.tensor(temperature_values)
+        for _ in range(self.agent_params['num_actor_updates_per_agent_update']):
+            _actor_loss, _alpha_loss, _alpha  = self.actor.update(ob_no,self.critic)
+            
+        actor_loss = _actor_loss.item()
+        alpha_loss = _alpha_loss.item()
+        alpha = _alpha.item()
+        
         # IMPLEM detail: are all the quantities going to be torch tensors or numpy ndarray ??
         # do this after verifying above components
 
 
         # 4. gather losses for logging
         loss = OrderedDict()
-        loss['Critic_Loss'] = ptu.to_numpy(critic_loss)
-        loss['Actor_Loss'] = ptu.to_numpy(actor_loss)
-        loss['Alpha_Loss'] = ptu.to_numpy(alpha_loss)  
-        loss['Temperature'] =  ptu.to_numpy(temperature_values)
+        loss['Critic_Loss'] = critic_loss
+        loss['Actor_Loss'] = actor_loss
+        loss['Alpha_Loss'] =   alpha_loss
+        loss['Temperature'] =  alpha
 
         return [loss]
 

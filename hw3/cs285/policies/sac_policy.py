@@ -64,7 +64,7 @@ class MLPPolicySAC(MLPPolicy):
             # choose deterministically i.e. return mean of the distribution
             action = dist.mean
 
-        action = ptu.to_numpy(action.unsqueeze(-1)) 
+        action = ptu.to_numpy(action) 
         return action 
         #return action.numpy()
 
@@ -107,8 +107,8 @@ class MLPPolicySAC(MLPPolicy):
         log_prob_action = dist.log_prob(action) # log(pi(st|at))
         
 
-        q_values = critic.forward(torch.from_numpy(obs).to(ptu.device),action)
-        q_values_min = torch.min(q_values)
+        q1_value, q2_value  = critic.forward(torch.from_numpy(obs).to(ptu.device),action)
+        q_values_min = torch.min(q1_value,q2_value)
 
         
         # -1 is for gradient ascent 

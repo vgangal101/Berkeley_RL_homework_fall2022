@@ -59,9 +59,8 @@ class SACCritic(nn.Module, BaseCritic):
         
         values = {}
 
-        action = action.squeeze(-1)
 
-        input_tensor = torch.cat((obs,action))
+        input_tensor = torch.cat((obs,action),dim=-1)
 
 
         q1_value = self.Q1(input_tensor)
