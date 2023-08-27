@@ -84,7 +84,7 @@ class SACAgent(BaseAgent):
 
         dist = self.actor.forward(next_obs_tensor)
         log_probs = dist.log_prob(next_action_sampled_tensor)
-
+  
         terminals_tensor = terminals_tensor.unsqueeze(-1)
         rewards_tensor = rewards_tensor.unsqueeze(-1)
 

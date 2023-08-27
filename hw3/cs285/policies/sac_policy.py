@@ -112,9 +112,16 @@ class MLPPolicySAC(MLPPolicy):
 
         
         # -1 is for gradient ascent 
-        actor_loss =  -1 * (self.alpha * log_prob_action + (self.alpha * log_prob_action - q_values_min)).mean()
+        #below is likely incorrect 
+        # actor_loss =  -1 * (self.alpha * log_prob_action + (self.alpha * log_prob_action - q_values_min)).mean()
+        #actor_loss = -1 * (self.alpha.detach() * log_prob_action - q_values_min.detach()).mean()
+        actor_loss = -1 * (q_values_min.detach() - self.alpha.detach() * log_prob_action).mean()
+
 
         alpha_loss = (-1 * self.alpha * log_prob_action.detach() - self.alpha * self.target_entropy).mean()
+
+        #alpha_loss = (-1 * self.alpha * (log_prob_action.detach() + self.target_entropy)).mean()
+
 
         # update the actor
         self.optimizer.zero_grad()
