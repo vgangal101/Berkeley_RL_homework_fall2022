@@ -52,63 +52,46 @@ class SACAgent(BaseAgent):
         # 1. Compute the target Q value. 
         # HINT: You need to use the entropy term (alpha)
         
-        min_target_q_func_vals = []
-        log_prob_actions = []
-        batch_size = ob_no.shape[0]
 
-        # !!!!! - YOU NEED TO RETHINK, REWRITE AND REDO THIS PART USING BATCH OPERATIONS !!!
-        for i in range(batch_size): 
-            #ob = ptu.from_numpy(ob_no[i]).to(ptu.device)
-            ob = ob_no[i]
-            
-            action = self.actor.get_action(ob)
-            #action = torch.from_numpy(action).to(ptu.device) # is this the correct action to be using ????
-            #action = ptu.from_numpy(ac_na[i],ptu.device)
-
-            #min_q_val = torch.min(self.critic_target(ob,action))
-            q_vals = self.critic_target(torch.from_numpy(ob).to(ptu.device),torch.from_numpy(action).to(ptu.device))
-            q1_val = q_vals['q1_value']
-            q2_val = q_vals['q2_value']
-            min_target_q_val = torch.min(q1_val,q2_val)
-            min_target_q_func_vals.append(min_target_q_val)
-
-            dist = self.actor.forward(torch.from_numpy(ob).to(ptu.device))
-            log_prob_action = dist.log_prob(torch.from_numpy(action).to(ptu.device))
-            log_prob_actions.append(log_prob_action)
+        obs_tensor = ptu.from_numpy(ob_no)
+        action_tensor = torch.from_numpy(ac_na).float().to(ptu.device)
+        
+        next_action_sampled = self.actor.get_action(ob_no)
+        next_action_sampled_tensor = ptu.from_numpy(next_action_sampled)
+        next_obs_tensor = ptu.from_numpy(next_ob_no)
 
 
-        #all_obs = ptu.from_numpy(ob_no,ptu.device)
-        #dists = self.actor.forward(all_obs)        
-        min_target_q_func_vals = torch.cat(min_target_q_func_vals)
-        log_prob_actions = torch.cat(log_prob_actions)
-        #all_rewards = ptu.from_numpy(re_n,ptu.device)
-        all_rewards = torch.from_numpy(re_n).to(ptu.device)
-        terminal_n_tensor = torch.from_numpy(terminal_n).to(ptu.device)
+        q_vals = self.critic_target(next_obs_tensor,next_action_sampled_tensor)
+        min_target_q_val = torch.min(q_vals)
 
-        q_func_target_val = all_rewards + self.gamma * (1-terminal_n_tensor) * (min_target_q_func_vals - self.actor.alpha * log_prob_actions)
 
+        # implementation todo - compute the learning target for the critic 
+        rewards_tensor = ptu.from_numpy(re_n)
+        terminals_tensor = ptu.from_numpy(terminal_n)
+
+        # compute the log_probs for all actions 
+        batch_size = next_obs_tensor.shape[0]
+
+        all_log_prob_action = []
+        for i in range(batch_size):
+            dist = self.actor.forward(next_obs_tensor[i])
+            action_log_prob = dist.log_prob(next_action_sampled_tensor[i])
+            all_log_prob_action.append(action_log_prob)
+        
+        log_probs = torch.stack(all_log_prob_action)
+
+        learning_target = rewards_tensor + self.gamma * (1 - terminals_tensor) * (min_target_q_val - self.actor.alpha * log_probs)
 
         # 2. Get current Q estimates and calculate critic loss
-        q_est_func1 = []
-        q_est_func2 = []
-        for i in range(batch_size):
-            ob = ptu.from_numpy(ob_no[i]).to(ptu.device)
-            
-            #action = ptu.from_numpy(ac_na[i],ptu.device)
-            action = ptu.from_numpy(ac_na[i]).to(ptu.device)
-            q_values = self.critic(ob,action)
-            q_est_func1.append(q_values['q1_value'])
-            q_est_func2.append(q_values['q2_value'])
-
-        q_est_func1 = torch.cat(q_est_func1)
-        q_est_func2 = torch.cat(q_est_func2)
-
-        q1_loss = self.critic.loss(q_est_func1,q_func_target_val)
-        q2_loss = self.critic.loss(q_est_func2,q_func_target_val)
+       
+        q1_values, q2_values = self.critic.forward(obs_tensor,action_tensor)
+        q1_loss = self.critic.loss(q1_values,learning_target)
+        q2_loss = self.critic.loss(q2_values,learning_target)
         
         critic_loss = q1_loss + q2_loss
 
-        # 3. Optimize the critic  
+        # 3. Optimize the critic
+        self.critic.optimizer.zero_grad()  
         critic_loss.backward()
         self.critic.optimizer.step()
         
