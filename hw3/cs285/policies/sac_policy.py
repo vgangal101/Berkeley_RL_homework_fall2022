@@ -64,8 +64,10 @@ class MLPPolicySAC(MLPPolicy):
             # choose deterministically i.e. return mean of the distribution
             action = dist.mean
 
-        action = ptu.to_numpy(action) 
-        return action 
+        # clip the actions 
+        clipped_action = torch.clip(action,min=self.action_range[0],max=self.action_range[1])
+
+        return ptu.to_numpy(clipped_action) 
         #return action.numpy()
 
 
