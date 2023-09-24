@@ -97,7 +97,8 @@ class MLPPolicySAC(MLPPolicy):
         # return losses and alpha value
 
 
-        sampled_action = self.get_action(obs,sample=False) # sample the policy deterministically f(E|St)
+        #sampled_action = self.get_action(obs,sample=False) # sample the policy deterministically f(E|St)
+        sampled_action = self.get_action(obs,sample=False)
         sampled_action_tensor = ptu.from_numpy(sampled_action)
         obs_tensor = ptu.from_numpy(obs)
         dist = self.forward(obs_tensor)

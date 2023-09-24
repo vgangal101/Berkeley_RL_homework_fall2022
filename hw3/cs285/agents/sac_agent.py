@@ -131,16 +131,29 @@ class SACAgent(BaseAgent):
         # for agent_params['num_actor_updates_per_agent_update'] steps,
         #     update the actor
 
-        actor_loss = None 
-        alpha_loss = None 
-        alpha = None 
+        actor_loss = []
+        alpha_loss =  
+        alpha = [] 
         
-        for _ in range(self.agent_params['num_actor_updates_per_agent_update']):
-            _actor_loss, _alpha_loss, _alpha  = self.actor.update(ob_no,self.critic)
+        if training_step % self.actor_update_frequency == 0 :
+            for _ in range(self.agent_params['num_actor_updates_per_agent_update']):
+                _actor_loss, _alpha_loss, _alpha  = self.actor.update(ob_no,self.critic)
             
-        actor_loss = _actor_loss.item()
-        alpha_loss = _alpha_loss.item()
-        alpha = _alpha.item()
+                actor_loss_value = _actor_loss.item()
+                alpha_loss_value = _alpha_loss.item()
+                alpha_value = _alpha.item()
+
+                actor_loss.append(actor_loss_value)
+                alpha_loss.append(alpha_loss_value)
+                alpha.append(alpha_value)
+        else: 
+            actor_loss.append(torch.tensor([0.]))
+            alpha_loss.append(torch.tensor([0.]))
+            alpha.append(torch.tensor([0.]))
+
+        actor_loss = torch.stack(actor_loss)
+        alpha_loss = torch.stack(alpha_loss)
+        alpha  = torch.stack(alpha)
         
         # IMPLEM detail: are all the quantities going to be torch tensors or numpy ndarray ??
         # do this after verifying above components
