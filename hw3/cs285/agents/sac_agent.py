@@ -108,18 +108,25 @@ class SACAgent(BaseAgent):
         return critic_loss
 
     def train(self, ob_no, ac_na, re_n, next_ob_no, terminal_n):
+
+        # training_step needs to be updated !!!
+        # could be missing this as well 
+        # -> if (len(self.replay_buffer) > self.train_batch_size and self.t % self.learning_freq == 0):
+        
+
+
         # TODO 
         # 1. Implement the following pseudocode:
         # for agent_params['num_critic_updates_per_agent_update'] steps,
         #     update the critic
 
-        critic_loss = None
+        critic_loss = []
 
         for _ in range(self.agent_params['num_critic_updates_per_agent_update']):
             #def update_critic(self, ob_no, ac_na, next_ob_no, re_n, terminal_n):
             loss_critic = self.update_critic(ob_no, ac_na, next_ob_no, re_n, terminal_n)
+            critic_loss.append(loss_critic.item())
             
-        critic_loss = loss_critic.item()
         
         # 2. Softly update the target every critic_target_update_frequency (HINT: look at sac_utils)
         if self.training_step % self.critic_target_update_frequency == 0:
@@ -132,10 +139,10 @@ class SACAgent(BaseAgent):
         #     update the actor
 
         actor_loss = []
-        alpha_loss =  
+        alpha_loss = []
         alpha = [] 
         
-        if training_step % self.actor_update_frequency == 0 :
+        if self.training_step % self.actor_update_frequency == 0 :
             for _ in range(self.agent_params['num_actor_updates_per_agent_update']):
                 _actor_loss, _alpha_loss, _alpha  = self.actor.update(ob_no,self.critic)
             
@@ -147,13 +154,16 @@ class SACAgent(BaseAgent):
                 alpha_loss.append(alpha_loss_value)
                 alpha.append(alpha_value)
         else: 
-            actor_loss.append(torch.tensor([0.]))
-            alpha_loss.append(torch.tensor([0.]))
-            alpha.append(torch.tensor([0.]))
+            actor_loss.append(0.)
+            alpha_loss.append(0.)
+            alpha.append(0.)
 
-        actor_loss = torch.stack(actor_loss)
-        alpha_loss = torch.stack(alpha_loss)
-        alpha  = torch.stack(alpha)
+
+
+
+        # actor_loss = torch.stack(actor_loss)
+        # alpha_loss = torch.stack(alpha_loss)
+        # alpha  = torch.stack(alpha)
         
         # IMPLEM detail: are all the quantities going to be torch tensors or numpy ndarray ??
         # do this after verifying above components
@@ -166,7 +176,7 @@ class SACAgent(BaseAgent):
         loss['Alpha_Loss'] =   alpha_loss
         loss['Temperature'] =  alpha
 
-        return [loss]
+        return loss
 
     def add_to_replay_buffer(self, paths):
         self.replay_buffer.add_rollouts(paths)
