@@ -309,14 +309,16 @@ class RL_Trainer(object):
     def train_agent(self):
         # TODO: get this from hw1 or hw2 
         # Needs to be completed as per needs of SAC 
-
+        all_logs = []
         # sample from the replay buffer 
-        ob_no, ac_na, re_n, next_ob_no, terminal_n = self.agent.sample(self.params['train_batch_size'])
+        for i in range(self.params['num_agent_train_steps_per_iter']):
+            ob_no, ac_na, re_n, next_ob_no, terminal_n = self.agent.sample(self.params['train_batch_size'])
 
-        # call agent train function and pass replay buffer sample data to it 
-        losses_dict = self.agent.train(ob_no,ac_na,re_n,next_ob_no,terminal_n)
+            # call agent train function and pass replay buffer sample data to it 
+            losses_dict = self.agent.train(ob_no,ac_na,re_n,next_ob_no,terminal_n)
+            all_logs.append(losses_dict)
 
-        return losses_dict
+        return all_logs
 
 
 
