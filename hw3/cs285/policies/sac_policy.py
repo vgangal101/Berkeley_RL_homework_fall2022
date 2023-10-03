@@ -56,7 +56,7 @@ class MLPPolicySAC(MLPPolicy):
         # detail to make sure obs always remains a float
         
 
-        dist = self.forward(torch.from_numpy(obs).float().to(ptu.device))
+        dist = self.forward(ptu.from_numpy(obs))
 
         if sample: 
             action = dist.sample()
@@ -96,12 +96,17 @@ class MLPPolicySAC(MLPPolicy):
         # TODO Update actor network and entropy regularizer
         # return losses and alpha value
 
-
+        # a ref implem: https://github.com/xd00099/CS285-DeepReinforcementLearning-Berkeley/blob/c72408ddbf42d0394a959e01405b6417610f9c2c/hw3/cs285/policies/sac_policy.py
         #sampled_action = self.get_action(obs,sample=False) # sample the policy deterministically f(E|St)
-        sampled_action = self.get_action(obs,sample=False)
-        sampled_action_tensor = ptu.from_numpy(sampled_action)
+        # sampled_action = self.get_action(obs) # do not need to compute determinstically , need to double check 
+        # sampled_action_tensor = ptu.from_numpy(sampled_action)
+        # obs_tensor = ptu.from_numpy(obs)
+        # dist = self.forward(obs_tensor)
+
         obs_tensor = ptu.from_numpy(obs)
         dist = self.forward(obs_tensor)
+        sampled_action_tensor = dist.rsample()
+
 
         log_prob_action = dist.log_prob(sampled_action_tensor) # log(pi(st|at))
         
@@ -119,7 +124,7 @@ class MLPPolicySAC(MLPPolicy):
 
         #alpha_loss = (-1 * self.alpha * log_prob_action.detach() - self.alpha * self.target_entropy).mean()
 
-        alpha_loss = (-1 * self.alpha * (log_prob_action.detach() + self.target_entropy)).mean()
+        alpha_loss = (-1 * self.alpha * (log_prob_action.detach() + self.target_entropy)).mean()  #  ATTENTION: self.alpha or self.log_alpha ???
 
 
         # update the actor

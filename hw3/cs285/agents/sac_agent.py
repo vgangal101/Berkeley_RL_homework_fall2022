@@ -54,28 +54,26 @@ class SACAgent(BaseAgent):
         
 
         obs_tensor = ptu.from_numpy(ob_no)
-        action_tensor = torch.from_numpy(ac_na).float().to(ptu.device)
-        # implementation todo - compute the learning target for the critic 
+        action_tensor = ptu.from_numpy(ac_na)
         rewards_tensor = ptu.from_numpy(re_n)
         terminals_tensor = ptu.from_numpy(terminal_n)       
-
+        next_obs_tensor = ptu.from_numpy(next_ob_no)
+        
         terminals_tensor = terminals_tensor.unsqueeze(-1)
         rewards_tensor = rewards_tensor.unsqueeze(-1)
 
 
         # mistake found here - sample next_action from the next_observation not the current observation
-        next_action_sampled = self.actor.get_action(next_ob_no) 
-        next_action_sampled_tensor = ptu.from_numpy(next_action_sampled)
-        next_obs_tensor = ptu.from_numpy(next_ob_no)
+        next_action_dist = self.actor.forward(next_obs_tensor) 
+        next_action_sampled_tensor = next_action_dist.sample()
+        next_action_log_probs = next_action_dist.log_prob(next_action_sampled_tensor)
+       
 
 
         target_q1_vals, target_q2_vals = self.critic_target(next_obs_tensor,next_action_sampled_tensor)
         min_target_q_val = torch.min(target_q1_vals,target_q2_vals)
 
 
-        dist = self.actor.forward(next_obs_tensor)
-        next_action_log_probs = dist.log_prob(next_action_sampled_tensor)
-        
         # add entropy 
         #min_target_q_val =  min_target_q_val - self.actor.alpha * next_action_log_probs
         
@@ -88,6 +86,7 @@ class SACAgent(BaseAgent):
         q1_loss = self.critic.loss(q1_values,learning_target)
         q2_loss = self.critic.loss(q2_values,learning_target)
         
+        #critic_loss = 0.5 * (q1_loss + q2_loss)
         critic_loss = 0.5 * (q1_loss + q2_loss)
 
         # 3. Optimize the critic
@@ -100,25 +99,16 @@ class SACAgent(BaseAgent):
     def train(self, ob_no, ac_na, re_n, next_ob_no, terminal_n):
 
 
-        
-        # training_step needs to be updated !!!
-        # could be missing this as well 
-        # -> if (len(self.replay_buffer) > self.train_batch_size and self.t % self.learning_freq == 0):
-        
-       
-
-
         # TODO 
         # 1. Implement the following pseudocode:
         # for agent_params['num_critic_updates_per_agent_update'] steps,
         #     update the critic
 
-        critic_loss = []
-
+        
         for _ in range(self.agent_params['num_critic_updates_per_agent_update']):
             #def update_critic(self, ob_no, ac_na, next_ob_no, re_n, terminal_n):
-            loss_critic = self.update_critic(ob_no, ac_na, next_ob_no, re_n, terminal_n)
-            critic_loss.append(loss_critic)
+            critic_loss = self.update_critic(ob_no, ac_na, next_ob_no, re_n, terminal_n)
+           
             
         
         
@@ -133,47 +123,20 @@ class SACAgent(BaseAgent):
         #     update the actor
 
     
-        actor_loss = []
-        alpha_loss = []
-        alpha = []
+        
         if self.training_step % self.actor_update_frequency == 0 :
-            
             for _ in range(self.agent_params['num_actor_updates_per_agent_update']):
-                _actor_loss, _alpha_loss, _alpha  = self.actor.update(ob_no,self.critic)
+                actor_loss, alpha_loss, alpha  = self.actor.update(ob_no,self.critic)
             
-                actor_loss_value = _actor_loss.item()
-                alpha_loss_value = _alpha_loss.item()
-                alpha_value = _alpha.item()
-
-                actor_loss.append(actor_loss_value)
-                alpha_loss.append(alpha_loss_value)
-                alpha.append(alpha_value)
+                
+                
         
 
         loss = OrderedDict()
-
-        if len(critic_loss) > 0:
-            if len(critic_loss) == 1:
-                loss['critic_loss'] = critic_loss[0]
-            else: 
-                loss['critic_loss'] = critic_loss
-        if len(actor_loss) > 0:
-            if len(critic_loss) == 1:
-                loss['actor_loss'] = actor_loss[0]
-            else: 
-                loss['actor_loss'] = actor_loss
-        if len(alpha_loss) > 0:
-            if len(alpha_loss) == 1:
-                loss['alpha_loss'] = alpha_loss[0]
-            else:
-                loss['alpha_loss'] = alpha_loss
-
-        if len(alpha) > 0 : 
-            if len(alpha) == 1:
-                loss['alpha'] = alpha[0]
-            else: 
-                loss['alpha'] = alpha
-
+        loss['Critic_Loss'] = critic_loss
+        loss['Actor_Loss'] = actor_loss
+        loss['Alpha_Loss'] = alpha_loss
+        loss['Temperature'] = alpha
         self.training_step +=1         
 
         return loss
