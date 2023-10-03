@@ -111,14 +111,14 @@ class MLPPolicySAC(MLPPolicy):
         log_prob_action = dist.log_prob(sampled_action_tensor) # log(pi(st|at))
         
 
-        q1_value, q2_value  = critic.forward(torch.from_numpy(obs).to(ptu.device),sampled_action_tensor)
+        q1_value, q2_value  = critic.forward(obs_tensor,sampled_action_tensor)
         q_values_min = torch.min(q1_value,q2_value)
 
         
         # -1 is for gradient ascent -- NO !! 
         #below is likely incorrect 
         # actor_loss =  -1 * (self.alpha * log_prob_action + (self.alpha * log_prob_action - q_values_min)).mean()
-        actor_loss = (self.alpha.detach() * log_prob_action - q_values_min.detach()).mean()
+        actor_loss = (self.alpha.detach() * log_prob_action - q_values_min).mean()
         #actor_loss = -1 * (q_values_min.detach() - self.alpha.detach() * log_prob_action).mean()
 
 

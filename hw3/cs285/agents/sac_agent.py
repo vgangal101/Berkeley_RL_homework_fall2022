@@ -65,7 +65,7 @@ class SACAgent(BaseAgent):
 
         # mistake found here - sample next_action from the next_observation not the current observation
         next_action_dist = self.actor.forward(next_obs_tensor) 
-        next_action_sampled_tensor = next_action_dist.sample()
+        next_action_sampled_tensor = next_action_dist.rsample()
         next_action_log_probs = next_action_dist.log_prob(next_action_sampled_tensor)
        
 
